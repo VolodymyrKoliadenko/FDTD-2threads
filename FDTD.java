@@ -6,9 +6,9 @@ public class FDTD {
 
     public static float lambd = 1064e-9f;
     public static float dx = lambd / 15;         // max dx=lam/10 !!
-    public static float Q = 1.08f;//1.08
+    public static float Q = 1.08f;//1.0 - center
     public static float mod = 0.008f * 2;//max modulation of EPSILON =2*deltaN;
-    public static float w = 19e-7f;//19 gauss
+    public static float w = 19e-7f;
 
     public static float[][] callFDTD(int nx, int ny, String method) {
         int i, j;//for loops
@@ -29,7 +29,7 @@ public class FDTD {
         //final float Z = 376.7303f;
         final float s = dt / dx;
         final float k3 = (1 - s) / (1 + s);//for MUR
-        final float alpha = (float) (sin(0.0 / 180 * PI));//radians. АККУРАТНЕЙ с целочисленным делением
+        final float alpha = (float) (sin(0.0 / 180 * PI));//radians
 
         final int begin = 10;// must bee small
         System.out.println("Imeem__Sloy= " + (ny - begin) * dy / prodol * 2);
@@ -38,31 +38,29 @@ public class FDTD {
         float[][] e = new float[nx + 1][ny + 1];
         for (i = 1; i < nx + 1; i++) {
             for (j = 1; j < ny + 1; j++) {
-                // EPSILON MATRIX full initialization
-                //ПЕРЕНОРМИРОВКА МОДУЛЯЦИИ
-                e[i][j] = (float) (ds / (n + ((j < begin) ? 0 : (mod / 2) * (1 + signum(-0.1 + cos(2 * PI * (i - nx / 2.0 + 0.5) * dx / period) * sin(2 * PI * (j - begin) * dy / prodol))))));
+                e[i][j] = (float) (ds / (n + ((j < begin) ? 0 : (mod / 2) * (1 + signum(-0.1 
+                        + cos(2 * PI * (i - nx / 2.0 + 0.5) * dx / period) * sin(2 * PI * (j - begin) * dy / prodol))))));
             }
         }
 
         float[][] end = new float[2][nx + 1]; // boundary conditions
         float[][] top = new float[2][ny + 1];
         float[][] bottom = new float[2][ny + 1];
-        //long tTime  = Calendar.getInstance().getTimeInMillis();
-
+        
         final int tMax = (int) (ny * 2.2);
         System.out.println("START CICLE");
-        for (int t = 1; t <= tMax; t++) {                    //____nachalo cicla
+        for (int t = 1; t <= tMax; t++) {                    // begin main loop
             if ((t % 10 == 0) && (method.equals("cos"))) {
                 BasicEx.fW.stroka.setText("Calculated " + t + " of " + tMax + " steps");
             }
             float tt = Math.min(t * s + 10, ny - 1);
-            //gauss // bez zatuhania          // int/2
+            //gauss
             switch (method) {
-                case "cos":        //напишы тут функцию вместо 4 копипа
+                case "cos":        
                     for (i = 1; i <= nx - 1; i++) {
                         x = (float) (dx * (i - (float) nx / 2 + 0.5));
                         Ez[i][1] = (float) (exp(-pow(x, 2) / w / w - (t - 1) * dt / tau)
-                                * cos((x * alpha + (t - 1) * dt) * omega));//перепишешь лямбді массива
+                                * cos((x * alpha + (t - 1) * dt) * omega));
                     }
                     break;
                 case "sin":
@@ -83,7 +81,7 @@ public class FDTD {
             System.arraycopy(Ez[nx], 0, bottom[1], 0, ny + 1);
 
             for (i = 2; i <= nx - 1; i++) {        // main Ez  
-                for (j = 2; j <= tt; j++) {   // подумай потом об оптимизации порядка вызова индексов в циклах
+                for (j = 2; j <= tt; j++) {   
                     Ez[i][j] += e[i][j] * ((Hx[i][j - 1] - Hx[i][j] + Hy[i][j] - Hy[i - 1][j]));
                 }
             }
@@ -92,12 +90,10 @@ public class FDTD {
                 Ez[i][ny] = end[0][i] + k3 * (end[1][i] - Ez[i][ny - 1]);//end
             }
             for (i = 1; i <= ny; i++) {
-                Ez[1][i] = top[1][i] + k3 * (top[0][i] - Ez[2][i]);//verh kray
+                Ez[1][i] = top[1][i] + k3 * (top[0][i] - Ez[2][i]);
                 Ez[nx][i] = bottom[0][i] + k3 * (bottom[1][i] - Ez[nx - 1][i]);
             }
-            //Ez=Arrays.stream(Ez0).map(float[]::clone).toArray(float[][]::new);  VERY SLOW !!! 2.7X
-            //Ez=Arrays.copyOf(Ez0, Ez0.length);   FAST
-            switch (method) {
+           switch (method) {
                 case "cos":
                     for (i = 1; i <= nx - 1; i++) {
                         x = (float) (dx * (i - (float) nx / 2 + 0.5));
@@ -111,7 +107,7 @@ public class FDTD {
                     }
                     break;
             }
-            //__ магнитное поле перенормирвано для облегчения рассчета
+           
             for (i = 1; i <= nx - 1; i++) {        // main Hx Hy
                 for (j = 1; j <= tt; j++) {
                     Hx[i][j] += Ez[i][j] - Ez[i][j + 1];
@@ -120,7 +116,6 @@ public class FDTD {
             }
         }
 
-        //System.out.println((float)(Calendar.getInstance().getTimeInMillis() - tTime)/1000 + " sec");
         int pos = method.equals("cos") ? 0 : 1;
         BasicEx.forFurier[pos] = new double[nx];
         int endF = (int) (ny * 0.95);//0.99
